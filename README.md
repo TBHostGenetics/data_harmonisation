@@ -1,7 +1,7 @@
 # Data Harmonisation Procedures
 Guidelines for merging genome-wide genotype data obtained from multi-way admixed populations.
 
-# Steps
+## Steps
 1. Processing individual datasets
 2. Merging of datasets
 3. Ancestry inference
@@ -16,7 +16,7 @@ Guidelines for merging genome-wide genotype data obtained from multi-way admixed
 - PONG
 - RFMix
 
-# 01 - Processing individual datasets 
+## 01 - Processing individual datasets 
 **Initial quality control**
 
 Individual datasets must undergo independent quality control procedures prior to merging. Remove SNPs and individuals with missing information, monomorphic sites and SNPs deviating from Hardy-Weinberg equilibrium (HWE). Remove sex chromosomes and chromosome 23. Check for any phenotypic information of population under investigation, in order to remove any indivual who have any missing phenotypic information, such as age or sex or disease status.
@@ -62,7 +62,7 @@ Make a file with related individuals and remove.
 plink --bfile inputfile --remove related_individuals_file --make-bed --out outputfile
 ```
 
-# 02 - Merging individual datasets
+## 02 - Merging individual datasets
 
 The merge function in PLINK appears to exclude variants that are common in both data sets, which is unexpected.The following steps extract the variants common in both file sets and merge the data:
 
@@ -115,4 +115,4 @@ Additional QC measures can be applied:
 plink --bfile inputfile --ind 0.1 --geno 0.05 --hwe 0.00001 --make-bed --out outputfile
 ```
 
-# 03 - Ancestry inference
+## 03 - Ancestry inference
