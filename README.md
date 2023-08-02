@@ -119,7 +119,7 @@ plink --bfile inputfile --ind 0.1 --geno 0.05 --hwe 0.00001 --make-bed --out out
 
 Ancestry inference involves two steps: global ancestry inference and local ancestry inference. 
 
-**Global ancestry inference***
+**Global ancestry inference**
 
 1. Prepare reference file 
 
