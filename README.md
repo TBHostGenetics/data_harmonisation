@@ -158,18 +158,19 @@ Remove pruned.out file fom data.
 plink --bfile inputfile --extract plink.prune.in --make-bed --out outputfile 
 ```
 
-Run ADMIXTURE software on filtered binary files. 
+3. Run ADMIXTURE software on filtered binary files (see https://dalexander.github.io/admixture/). 
 
 ```
-for k in {3..10}; do aadmixture --cv Target_Reference_merged_unrelated_LD_pruned.bed ${k} -j4 | tee log${k}; done
+for k in {3..10}; do admixture --cv Target_Reference_merged_unrelated_LD_pruned.bed ${k} -j4 | tee log${k}; done
 ```
 
-Visulaise results with PONG. 
-The following inputfiles are required: 
+4. Visulaise results with PONG (see https://github.com/ramachandran-lab/pong/tree/master). 
 
-1. pong_filemap
-2. pop_order
-3. ind2pop
+The inputfiles required: 
+
+- pong_filemap
+- pop_order
+- ind2pop
 
 Run pong software: 
 
