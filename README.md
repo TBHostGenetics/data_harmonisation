@@ -251,10 +251,10 @@ plink --vcf inputfile --biallelic-only strict --recode --make-bed --out outputfi
 
 2. Code all other batches/datasets as controls in the FAM file.
 
-3. Run logistic regression model (use sex, age and global ancestry proportion covariates). You will require a file containing all the phenotype information of your cohort. Example Covariates.txt
+3. Run logistic regression model (use sex, age and global ancestry proportion covariates). You will require a file containing all the phenotype information of your cohort. Example Covariates_GA_PC.txt
 
 ```
-plink --bfile inputfile --glm sex --covar Covariates.txt --covar-name AGE,AFR,EUR,SAN --covar-variance-standardize --adjust --ci 0.95 --out GWAS
+plink --bfile inputfile --glm sex --covar Covariates_GA_PC.txt --covar-name AGE,AFR,EUR,SAN --covar-variance-standardize --adjust --ci 0.95 --out GWAS
 ```
 
 4. Create a list of SNPs surpassing suggestive threshold (P-value < 10-4).
