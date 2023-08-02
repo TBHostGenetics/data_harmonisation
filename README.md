@@ -116,3 +116,64 @@ plink --bfile inputfile --ind 0.1 --geno 0.05 --hwe 0.00001 --make-bed --out out
 ```
 
 ## 03 - Ancestry inference
+
+Ancestry inference involves two steps: global ancestry inference and local ancestry inference. 
+
+**Global ancestry inference***
+
+1. Prepare reference file 
+
+Download Reference data from the 1000GP website: 
+
+```wget ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/ALL.chr*.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz```
+
+*Populations used in 1000GP:* 
+
+- GBR (40)
+- CHB (40)
+- YRI (40)
+
+*Populations used in external databases:*
+
+- Malay (40)
+- Nama (40)
+
+Before merging reference datasets, make sure the bim file format are the same for all datasets and all used the hg19 build for chromosome positions
+
+Convert vcf files to plink binary format: 
+
+``` plink --vcf inputfile --biallelic-only strict --recode --make-bed --out outputfile```
+
+Merge reference and target datasets using steps outlined in 02 - Merging individual datasets.
+
+2. Conduct LD pruning on the data before inferring global ancestry (we only want the haplotypes in tight LD blocks).
+
+```
+plink --bfile inputfile --indep-pairwise 50 10 0.1 
+```
+
+Remove pruned.out file fom data. 
+
+```
+plink --bfile inputfile --extract plink.prune.in --make-bed --out outputfile 
+```
+
+Run ADMIXTURE software on filtered binary files. 
+
+```
+for k in {3..10}; do aadmixture --cv Target_Reference_merged_unrelated_LD_pruned.bed ${k} -j4 | tee log${k}; done
+```
+
+Visulaise results with PONG. 
+The following inputfiles are required: 
+
+1. pong_filemap
+2. pop_order
+3. ind2pop
+
+Run pong software: 
+
+```
+pong -m pong_filemap -n pop_order -i pop_ids
+```
+
