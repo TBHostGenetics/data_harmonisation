@@ -142,7 +142,9 @@ Before merging reference datasets, make sure the bim file format are the same fo
 
 Convert vcf files to plink binary format: 
 
-``` plink --vcf inputfile --biallelic-only strict --recode --make-bed --out outputfile```
+```
+plink --vcf inputfile --biallelic-only strict --recode --make-bed --out outputfile
+```
 
 
 2. Merge reference and target datasets using steps outlined in 02 - Merging individual datasets.
@@ -226,3 +228,43 @@ rfmix -f inputfile_query.vcf -r inputfile_reference.vcf -m sample_map_SAC -g gen
 - sis.tsv
 - msp.tsv
 - fb.tsv
+
+## 04 - Batch effect correction 
+
+A method to detect batch effects involves coding case/control status by batch followed by running an association analysis testing each batch against all other batches (a “pseudo-GWAS”, as described in the aforementioned article). For example, the status of all samples from one dataset will be coded as a case, while the status of every other sample is to be coded as a control. A genome-wide association test will then be performed. This process will be repeated for each batch. If any single dataset has more positive signals compared to the other datasets then batch effects may be responsible for producing spurious results. If batch effects are present, the genomic inflation factor (λ) for these “pseudo-GWASs” will be greater than one. Batch effects can be resolved by removing those SNPs which pass the threshold for suggestive significance (P-value < 1x10-4) from the merged dataset, as these SNPs are affected by batch effects. 
+
+1. Concatenate all per chromosome files together using BCFTOOLS.
+
+```
+bcftools concat inputfile_chr*.vcf -Ov -o output.vcf
+```
+
+2. Convert VCF files to plink binary format: 
+
+```
+plink --vcf inputfile --biallelic-only strict --recode --make-bed --out outputfile
+```
+
+*Steps for pseudo-case-control comparison.*
+
+1. Code one batch/dataset as case in the FAM file.
+
+2. Code all other batches/datasets as controls in the FAM file.
+
+3. Run logistic regression model (use sex, age and global ancestry proportion covariates). You will require a file containing all the phenotype information of your cohort. Example Covariates.txt
+
+```
+plink --bfile inputfile --glm sex --covar Covariates.txt --covar-name AGE,AFR,EUR,SAN --covar-variance-standardize --adjust --ci 0.95 --out GWAS
+```
+
+4. Create a list of SNPs surpassing suggestive threshold (P-value < 10-4).
+
+5. Repeat for each batch/dataset.
+
+6. Remove SNPs affected by batch from merged dataset.
+
+```
+plink --bfile inputfile --extract BatchEffectedSnps.txt --make-bed --out outputfile
+```
+
+**Your dataset is now ready for downstream analyses!**
