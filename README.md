@@ -63,3 +63,52 @@ plink --bfile inputfile --remove related_individuals_file --make-bed --out outpu
 ```
 
 # 02 - Merging individual datasets
+
+The merge function in PLINK appears to exclude variants that are common in both data sets, which is unexpected.The following steps extract the variants common in both file sets and merge the data:
+
+1. Extract SNP IDs from BIM files and sort them numerically (it will be useful to convert SNP IDs to chr:bp format before doing this).
+
+```
+plink --bfile inputfile --set-all-var-ids @:# --make-bed --out outputfile
+awk '{print $2}' inputfile.bim | sort > inputfile_SNPs_sorted.txt
+```
+
+2. Create a list of SNPs common to the datasets you wish to merge.
+
+```
+comm -12 inputfile1_sorted.txt inputfile2_sorted.txt > intersecting_snps.txt
+```
+
+3. Extract this list of SNPs from the separate datasets.
+
+```
+plink --bfile inputfile1 --extract intersecting_snps.txt --make-bed --out inputfile1_intersect_snps
+
+plink --bfile inputfile2 --extract intersecting_snps.txt --make-bed --out inputfile2_intersect_snps
+```
+
+4. Merge the datasets.
+
+```
+plink --bfile inputfile1_intersect_snps --bmerge inputfile2_intersect_snps.bed inputfile2_intersect_snps.bim inputfile2_intersect_snps.fam --make-bed --out outputfile
+```
+
+5. After merging, we need to check and remove related indivduals again.
+
+```
+king -b inputfile.bed --kinship --degree2 --prefix outputfile
+```
+
+Make a file with related individuals and remove. 
+
+```
+plink --bfile inputfile --remove related_individuals_file --make-bed --out outputfile
+```
+
+Additional QC measures can be applied: 
+
+```
+plink --bfile inputfile --ind 0.1 --geno 0.05 --hwe 0.00001 --make-bed --out outputfile
+```
+
+# 03 - Ancestry inference
