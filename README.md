@@ -144,9 +144,11 @@ Convert vcf files to plink binary format:
 
 ``` plink --vcf inputfile --biallelic-only strict --recode --make-bed --out outputfile```
 
-Merge reference and target datasets using steps outlined in 02 - Merging individual datasets.
 
-2. Conduct LD pruning on the data before inferring global ancestry (we only want the haplotypes in tight LD blocks).
+2. Merge reference and target datasets using steps outlined in 02 - Merging individual datasets.
+
+
+3. Conduct LD pruning on the data before inferring global ancestry (we only want the haplotypes in tight LD blocks).
 
 ```
 plink --bfile inputfile --indep-pairwise 50 10 0.1 
@@ -158,13 +160,15 @@ Remove pruned.out file fom data.
 plink --bfile inputfile --extract plink.prune.in --make-bed --out outputfile 
 ```
 
-3. Run ADMIXTURE software on filtered binary files (see https://dalexander.github.io/admixture/). 
+
+4. Run ADMIXTURE software on filtered binary files (see https://dalexander.github.io/admixture/). 
 
 ```
 for k in {3..10}; do admixture --cv Target_Reference_merged_unrelated_LD_pruned.bed ${k} -j4 | tee log${k}; done
 ```
 
-4. Visulaise results with PONG (see https://github.com/ramachandran-lab/pong/tree/master). 
+
+5. Visulaise results with PONG (see https://github.com/ramachandran-lab/pong/tree/master). 
 
 The inputfiles required: 
 
