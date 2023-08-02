@@ -93,6 +93,10 @@ plink --bfile inputfile2 --extract intersecting_snps.txt --make-bed --out inputf
 plink --bfile inputfile1_intersect_snps --bmerge inputfile2_intersect_snps.bed inputfile2_intersect_snps.bim inputfile2_intersect_snps.fam --make-bed --out outputfile
 ```
 
+Usual errors with merge are:
+- Flipstrand - usually the case if not, remove the variants.
+- Remove variants to to having 3+ alleles.
+
 5. After merging, we need to check and remove related indivduals again.
 
 ```
