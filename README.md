@@ -170,7 +170,7 @@ for k in {3..10}; do admixture --cv Target_Reference_merged_unrelated_LD_pruned.
 ```
 
 
-5. Visulaise results with PONG (see https://github.com/ramachandran-lab/pong/tree/master). 
+5. Visualise results with PONG (see https://github.com/ramachandran-lab/pong/tree/master). 
 
 The inputfiles required: 
 
