@@ -2,24 +2,24 @@
 Guidelines for merging genome-wide genotype data obtained from multi-way admixed populations.
 
 ## Steps
-1. Processing individual datasets
-2. Merging of datasets
-3. Ancestry inference
-4. Batch effect coffection
+1. Processing individual datasets.
+2. Merging of datasets.
+3. Ancestry inference.
+4. Batch effect correction.
 
 **Software required for procedures**
-- PLINK
-- BCFTOOLS
-- KING
-- SHAPEIT2
-- ADMIXTURE
-- PONG
-- RFMix
+- PLINK (https://www.cog-genomics.org/plink/2.0/)
+- BCFTOOLS (https://samtools.github.io/bcftools/bcftools.html)
+- KING (https://www.kingrelatedness.com)
+- SHAPEIT2 (https://mathgen.stats.ox.ac.uk/genetics_software/shapeit/shapeit.html)
+- ADMIXTURE (https://dalexander.github.io/admixture/)
+- PONG (https://brown.edu/Research/Ramachandran_Lab/files/pong/pong-manual.pdf)
+- RFMix (https://github.com/slowkoni/rfmix)
 
 ## 01 - Processing individual datasets 
 **Initial quality control**
 
-Individual datasets must undergo independent quality control procedures prior to merging. Remove SNPs and individuals with missing information, monomorphic sites and SNPs deviating from Hardy-Weinberg equilibrium (HWE). Remove sex chromosomes and chromosome 23. Check for any phenotypic information of population under investigation, in order to remove any indivual who have any missing phenotypic information, such as age or sex or disease status.
+Individual datasets must undergo independent quality control procedures prior to merging. Remove SNPs and individuals with missing information, monomorphic sites and SNPs deviating from Hardy-Weinberg equilibrium (HWE). Remove sex chromosomes and chromosome 23. Check for any phenotypic information of population under investigation, in order to remove any indivual who have any missing phenotypic information, such as age or sex or disease status. In our study, we filtered out variants with a genotype call rate less than 95% and variants that deviated from the HWE p-value threshold of 0.00001. We also removed individuals with average genotype call rates less than 90%. These QC thresholds may be adjusted based on the specific requirements of your study. 
 
 ``` 
 plink --bfile filename --mind 0.1 --geno 0.05 --hwe 0.00001 -chr1-22 --make-bed --out outputfile
@@ -44,13 +44,13 @@ We recommend removing poorly imputed SNPs from individual datasets to minimise s
 for i in {1..22}; do bcftools +impute-info  ${i}.pbwt_reference_impute.vcf.gz  -Oz -o chr${i}_imputed_info.vcf.gz; done
 ```
 
-We can choose an INFO score threshold to filter out poorly imputed sites. We recommend filtering out all SNPs with INFO scores less than 0.8. This can be done with BCFTOOLS. 
+We can choose an INFO score threshold to filter out poorly imputed sites. We recommend filtering out all SNPs with INFO scores less than 0.8. This can be done with BCFTOOLS. Again, the INFO score threshold may be adjusted based on the specific requirements of your study.
 
 ```
 bcftools filter -e 'INFO/INFO<0.8' input.vcf.gz -Oz -o output.vcf.gz
 ```
 
-We need to check and remove related indivduals within individual datasets before merging. The software KING and kinship coefficient is sufficient to identify close relationships between participants who have extensive population strcuture. Usually up to 2nd Degree relatedness, indicated by a kinship coefficient of 0.0884-0.177. 
+We need to check and remove related indivduals within individual datasets before merging. The software KING and kinship coefficient is sufficient to identify close relationships between participants who have extensive population structure. Usually up to 2nd Degree relatedness, indicated by a kinship coefficient of 0.0884-0.177. 
 
 ```
 king -b inputfile.bed --kinship --degree2 --prefix outputfile
@@ -64,7 +64,7 @@ plink --bfile inputfile --remove related_individuals_file --make-bed --out outpu
 
 ## 02 - Merging individual datasets
 
-The merge function in PLINK appears to exclude variants that are common in both data sets, which is unexpected.The following steps extract the variants common in both file sets and merge the data:
+The merge function in PLINK appears to exclude variants that are common in both data sets, which is unexpected. The following steps extract the variants common in both file sets and merge the data:
 
 1. Extract SNP IDs from BIM files and sort them numerically (it will be useful to convert SNP IDs to chr:bp format before doing this).
 
@@ -93,9 +93,11 @@ plink --bfile inputfile2 --extract intersecting_snps.txt --make-bed --out inputf
 plink --bfile inputfile1_intersect_snps --bmerge inputfile2_intersect_snps.bed inputfile2_intersect_snps.bim inputfile2_intersect_snps.fam --make-bed --out outputfile
 ```
 
-Usual errors with merge are:
-- Flipstrand - usually the case if not, remove the variants.
-- Remove variants to to having 3+ alleles.
+*Usual errors with merge are:*
+
+*- Flipstrand - usually the case if not, remove the variants.*
+
+*- Remove variants to to having 3+ alleles.*
 
 5. After merging, we need to check and remove related indivduals again.
 
@@ -109,7 +111,7 @@ Make a file with related individuals and remove.
 plink --bfile inputfile --remove related_individuals_file --make-bed --out outputfile
 ```
 
-Additional QC measures can be applied: 
+Additional QC measures can be applied based on the requirements of your study: 
 
 ```
 plink --bfile inputfile --ind 0.1 --geno 0.05 --hwe 0.00001 --make-bed --out outputfile
@@ -121,7 +123,7 @@ Ancestry inference involves two steps: global ancestry inference and local ances
 
 **Global ancestry inference**
 
-1. Prepare reference file 
+1. Prepare reference file. 
 
 Download Reference data from the 1000GP website: 
 
@@ -138,7 +140,7 @@ Download Reference data from the 1000GP website:
 - Malay (40)
 - Nama (40)
 
-Before merging reference datasets, make sure the bim file format are the same for all datasets and all used the hg19 build for chromosome positions
+Before merging reference datasets, make sure the bim file format are the same for all datasets and all used the hg19/GRCh37 build for chromosome positions.
 
 Convert vcf files to plink binary format: 
 
@@ -147,7 +149,7 @@ plink --vcf inputfile --biallelic-only strict --recode --make-bed --out outputfi
 ```
 
 
-2. Merge reference and target datasets using steps outlined in 02 - Merging individual datasets.
+2. Merge reference and target datasets using steps outlined in *02 - Merging individual datasets*.
 
 
 3. Conduct LD pruning on the data before inferring global ancestry (we only want the haplotypes in tight LD blocks).
@@ -156,7 +158,7 @@ plink --vcf inputfile --biallelic-only strict --recode --make-bed --out outputfi
 plink --bfile inputfile --indep-pairwise 50 10 0.1 
 ```
 
-Remove pruned.out file fom data. 
+Remove ```pruned.out``` file fom data. 
 
 ```
 plink --bfile inputfile --extract plink.prune.in --make-bed --out outputfile 
@@ -172,7 +174,7 @@ for k in {3..10}; do admixture --cv Target_Reference_merged_unrelated_LD_pruned.
 
 5. Visualise results with PONG (see https://github.com/ramachandran-lab/pong/tree/master). 
 
-The inputfiles required: 
+*The inputfiles required:* 
 
 - pong_filemap
 - pop_order
@@ -189,7 +191,7 @@ pong -m pong_filemap -n pop_order -i pop_ids
 
 **Local ancestry inference**
 
-Per chromosome VCF files must be phased for ancestry inference using RFMix. Recombination maps are required to phase data, therefore inferring where each allele came from which parent. We used the African American genetic map build 37. This map was based on data from the HapMap consortium and includes genetic data from individuals with 80% West African ancestry and 20% European ancestry.
+Per chromosome VCF files must be phased for ancestry inference using RFMix. Recombination maps are required to phase data, therefore inferring where each allele came from which parent. We used the African American genetic map build 37. This map was based on data from the HapMap consortium and includes genetic data from individuals with 80% West African ancestry and 20% European ancestry (see https://ftp.ncbi.nlm.nih.gov/hapmap/recombination/2011-01_phaseII_B37/).
 
 1. Split data into individual chromosomes before phasing.
 
@@ -224,14 +226,14 @@ rfmix -f inputfile_query.vcf -r inputfile_reference.vcf -m sample_map_SAC -g gen
 
 *Outputfiles generated by RFMix*
 
-- rfmix.Q. The global ancestry proportions in this file can be used as covariates in the linear regression models in step 04 - Batch effect correction, or in other downstream analyses.
+- rfmix.Q. *The global ancestry proportions in this file can be used as covariates in the linear regression models in step 04 - Batch effect correction, or in other downstream analyses.*
 - sis.tsv
 - msp.tsv
 - fb.tsv
 
 ## 04 - Batch effect correction 
 
-A method to detect batch effects involves coding case/control status by batch followed by running an association analysis testing each batch against all other batches (a “pseudo-GWAS”, as described in the aforementioned article). For example, the status of all samples from one dataset will be coded as a case, while the status of every other sample is to be coded as a control. A genome-wide association test will then be performed. This process will be repeated for each batch. If any single dataset has more positive signals compared to the other datasets then batch effects may be responsible for producing spurious results. If batch effects are present, the genomic inflation factor (λ) for these “pseudo-GWASs” will be greater than one. Batch effects can be resolved by removing those SNPs which pass the threshold for suggestive significance (P-value < 1x10-4) from the merged dataset, as these SNPs are affected by batch effects. 
+A pseudo-case-control comparison method to detect batch effects involves coding case/control status by batch followed by running an association analysis testing each batch against all other batches. For example, the status of all samples from one dataset will be coded as a case, while the status of every other sample is to be coded as a control. A genome-wide association test will then be performed. This process will be repeated for each batch. If any single dataset has more positive signals compared to the other datasets then batch effects may be responsible for producing spurious results. If batch effects are present, the genomic inflation factor (λ) for these “pseudo-GWASs” will be greater than one. Batch effects can be resolved by removing those SNPs which pass the threshold for suggestive significance (P-value < 1x10-4) from the merged dataset, as these SNPs are affected by batch effects. 
 
 1. Concatenate all per chromosome files together using BCFTOOLS.
 
