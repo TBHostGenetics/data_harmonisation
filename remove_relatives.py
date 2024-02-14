@@ -13,9 +13,6 @@ except:
 	print("Alternatively, run with a virtual environment and pip install pandas, numpy, and sklearn.")
 	sys.exit()
 
-__author__ =  "Cole Williams"
-__email__ = "cole_williams@brown.edu"
-
 try:
 	degree = sys.argv[-1]
 	fam_file = sys.argv[-2]
