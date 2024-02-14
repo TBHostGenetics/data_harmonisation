@@ -9,7 +9,10 @@ Guidelines for merging genome-wide genotype data obtained from multi-way admixed
 
 **Software required for procedures**
 - PLINK (https://www.cog-genomics.org/plink/2.0/)
+- VCFTOOLS v0.1.17 (https://vcftools.github.io/index.html)
 - BCFTOOLS (https://samtools.github.io/bcftools/bcftools.html)
+- Eagle v2.4.1 (phases genotypes prior to imputation - https://alkesgroup.broadinstitute.org/Eagle/#x1-30002)
+- Minimac4 (https://github.com/statgen/Minimac4)
 - KING (https://www.kingrelatedness.com)
 - SHAPEIT2 (https://mathgen.stats.ox.ac.uk/genetics_software/shapeit/shapeit.html)
 - ADMIXTURE (https://dalexander.github.io/admixture/)
@@ -19,11 +22,37 @@ Guidelines for merging genome-wide genotype data obtained from multi-way admixed
 ## 01 - Processing individual datasets 
 **Initial quality control**
 
-Individual datasets must undergo independent quality control procedures prior to merging. Remove SNPs and individuals with missing information, monomorphic sites and SNPs deviating from Hardy-Weinberg equilibrium (HWE). Remove sex chromosomes and chromosome 23. Check for any phenotypic information of population under investigation, in order to remove any indivual who have any missing phenotypic information, such as age or sex or disease status. In our study, we filtered out variants with a genotype call rate less than 95% and variants that deviated from the HWE p-value threshold of 0.00001. We also removed individuals with average genotype call rates less than 90%. These QC thresholds may be adjusted based on the specific requirements of your study. 
+Individual datasets must undergo independent quality control procedures prior to merging. Remove SNPs and individuals with missing information, monomorphic sites (for which the MAF < 1/2n, where n is the number of samples in the dataset) and SNPs deviating from Hardy-Weinberg equilibrium (HWE). Remove sex chromosomes and chromosome 23. Check for any phenotypic information of population under investigation, in order to remove any indivual who have any missing phenotypic information, such as age or sex or disease status. In our study, we filtered out variants with a genotype call rate less than 95%, variants that deviated from the HWE p-value threshold of 0.00001. We also removed individuals with average genotype call rates less than 90%. These QC thresholds may be adjusted based on the specific requirements of your study. 
 
 ``` 
-plink --bfile filename --mind 0.1 --geno 0.05 --hwe 0.00001 -chr1-22 --make-bed --out outputfile
+plink --bfile filename --mind 0.1 --geno 0.05 --hwe 0.00001 --maf -chr1-22 --make-bed --out outputfile
 ```
+
+VCFTOOLS can be used to perform genotype QC on files in VCF file format. 
+
+```
+vcftools --vcf input_filename --max-missing 0.95 --hwe 0.00001 --maf --max-alleles 2 --recode --recode-INFO-all --out output_filename
+```
+
+Convert the PLINK binary files to VCF file format for imputation. 
+
+```
+plink --bfile binary_fileset --recode vcf-iid --out vcf_file 
+```
+
+**Special considerations for merging with WGS data**
+
+Merging WGS data with array genotype data requires special considerations. Genotype data obtained from different cohorts should only be combined using intersecting or common SNPs across all groups to avoid high rates of missing data in the final merged dataset. The high coverage genotype data obtained from WGS has the ability to completely overlap with markers on any array. However, merging WGS and array data can be complicated by differences in genotyping technologies with a high potential for introducing batch effects. The following describe steps for preparing WGS data for merging with genotype data:
+
+1.	Generate the list of SNPs to be extracted from the WGS data. The list should be in a textt format with the rsIDs or position of the SNP in the chromosome:basepair format (one SNP per line, no headers). Regardless of the method, ensure that the corresponding reference genome used for genotype calling across datasets is consistent.
+
+2.	Extract the SNP list from WGS data using PLINK and convert the output file to binary PLINK file format.
+
+```
+plink --vcf input_filename.vcf --extract SNP_list.txt --make-bed --out output_filename
+```
+
+3.	Follow QC, imputation and post-imputation QC procedures outlined above.
 
 **Imputation**
 
@@ -31,6 +60,34 @@ Imputing separate datasets is recommended prior to merging to increase the numbe
 - Sanger imputation server (https://imputation.sanger.ac.uk)
 - TOPMed imputation server (https://imputation.biodatacatalyst.nhlbi.nih.gov)
 - Michigan imputation server (https://imputationserver.sph.umich.edu/index.html)
+
+In the event that researchers have a local/personalized reference panel for imputation, or do not wish to use a remote imputation server, phasing and imputation can be performed locally. Here, we provide steps for performing phasing and imputation using Eagle and MiniMac4:
+
+1.	Split target and reference VCFs into individual chromosome files using PLINK. 
+
+```
+for i in {1..22}; do plink --vcf TargetSamples.vcf --chr ${i} --recode vcf --out TargetSamples _chr${i}; done
+
+for i in {1..22}; do plink --vcf ReferenceSamples.vcf --chr ${i} --recode vcf --out ReferenceSamples _chr${i}; done
+```
+
+2.	Phase target per-chromosome VCFs using Eagle and the phased reference VCF.
+
+```
+for i in {1..22}; do Eagle_v2.4.1/eagle --noImpMissing --vcfOutFormat=z --vcfTarget TargetSamples _chr${i}.vcf --geneticMapFile Eagle_v2.4.1/tables/genetic_map_hg38_withX.txt.gz --outPrefix TargetSamples _chr${i}.phased --vcfRef ReferenceSamples_chr${i}.vcf; done
+```
+
+3.	Impute missing genotypes in phased target per-chromosome VCFs using Minimac4 and the phased reference VCF.
+
+```
+for i in {1..22}; do minimac4 --refHaps ReferenceSamples_chr${i}.vcf --haps TargetSamples _chr${i}.phased.vcf.gz --allTypedSites --cpus 10 --prefix TargetSamples_imputed_chr${i}; done
+```
+
+The per-chromosome imputed VCF files can then be concatenated using BCFTools to produce one VCF (containing all chromosomes and individuals). 
+
+```
+bcftools concat TargetSamples_imputed_chr*.vcf -Oz -o allChromosomes_impute.vcf.gz
+```
 
 The accuracy and quality of imputation performed by different imputation algorithms and reference panels on different populations is an area of ongoing research. The population structure of the tagret population and similarity to the imputation reference panel must be carefully considered before imputation. We recommend investigating the performance of different imputation algorithm and reference panel combinations to determine the best strategy for your unique target population. 
 
@@ -41,7 +98,7 @@ For our five-way admixed South African population, we employed the PBWT imputati
 We recommend removing poorly imputed SNPs from individual datasets to minimise spurious associations in downstream analyses. To assess imputation quality we consider the INFO score quality metric. The INFO score ranges from 0 to 1, where values near 1 indicate that a SNP has been imputed with a high degree of certainty. BCFTOOLS can be used to calculate the INFO scores. 
 
 ```
-for i in {1..22}; do bcftools +impute-info  ${i}.pbwt_reference_impute.vcf.gz  -Oz -o chr${i}_imputed_info.vcf.gz; done
+for i in {1..22}; do bcftools +impute-info  ${i}.imputed.vcf.gz  -Oz -o chr${i}_imputed_info.vcf.gz; done
 ```
 
 We can choose an INFO score threshold to filter out poorly imputed sites. We recommend filtering out all SNPs with INFO scores less than 0.8. This can be done with BCFTOOLS. Again, the INFO score threshold may be adjusted based on the specific requirements of your study.
@@ -50,19 +107,40 @@ We can choose an INFO score threshold to filter out poorly imputed sites. We rec
 bcftools filter -e 'INFO/INFO<0.8' input.vcf.gz -Oz -o output.vcf.gz
 ```
 
-We need to check and remove related indivduals within individual datasets before merging. The software KING and kinship coefficient is sufficient to identify close relationships between participants who have extensive population structure. Usually up to 2nd Degree relatedness, indicated by a kinship coefficient of 0.0884-0.177. 
+We need to check and remove related indivduals within individual datasets before merging. The software KING and kinship coefficient is sufficient to identify close relationships between participants who have extensive population structure. Usually up to 2nd Degree relatedness, indicated by a kinship coefficient of 0.0884-0.177. Identical by descent (IBD) segments are rapidly inferred and individuals in relationship paris (such as parent/offpring or sibling pairs) are identified using KING:
 
 ```
-king -b inputfile.bed --kinship --degree2 --prefix outputfile
+king -b input_filename.bed --ibdseg
 ```
 
-Make a file with related individuals and remove. 
+One individual from each relationship-pair identified should be chosen to be removed from the dataset. The remove_relatives.py script (developed as part of the PONDEROSA algorithm - https://github.com/williamscole/PONDEROSA/tree/master) compiles a list of unrelated individuals, given the .seg file generated by the above KING command and the .fam file from PLINK. Pairs of individuals who are less than 2nd degree relatives will be identified in the following command:
 
 ```
-plink --bfile inputfile --remove related_individuals_file --make-bed --out outputfile
+python remove_relatives.py None king.seg input_filename.fam 2nd
 ```
+
+Use PLINK and the output list of unrelated individuals to filter related individuals from the dataset:
+
+```
+plink --bfile input_filename --keep unrelated_individuals.txt --make-bed --out output_filename
+```
+
+Repeat this procedure for each separate dataset.
 
 ## 02 - Merging individual datasets
+
+If required, convert genomic positions to the same coordinate system (hg19, hg38, etc.). The LiftoverVcf tool from GATK can be used to “lift over” genetic positions in a VCF from one genome build to another. The LiftoverVCF tool forms part of the Picard command-line tools, which are provided in a single executable picard.jar file (which can be downloaded from https://github.com/broadinstitute/picard/releases/tag/3.1.1). Follow the instructions at https://broadinstitute.github.io/picard/ to download and install the Picard toolset. 
+
+Once the toolset has been installed, run the following commands to convert VCF genomic coordinates from one genome build to another (e.g., from hg19 to hg38). 
+
+```
+java -jar picard.jar LiftoverVcf \\
+     I=input.vcf \\
+     O=lifted_over.vcf \\
+     CHAIN=b37tohg38.chain \\
+     REJECT=rejected_variants.vcf \\
+     R=reference_sequence.fasta
+```
 
 The merge function in PLINK appears to exclude variants that are common in both data sets, which is unexpected. The following steps extract the variants common in both file sets and merge the data:
 
@@ -102,13 +180,15 @@ plink --bfile inputfile1_intersect_snps --bmerge inputfile2_intersect_snps.bed i
 5. After merging, we need to check and remove related indivduals again.
 
 ```
-king -b inputfile.bed --kinship --degree2 --prefix outputfile
+king -b input_filename.bed --ibdseg
+
+python remove_relatives.py None king.seg input_filename.fam 2nd
 ```
 
-Make a file with related individuals and remove. 
+Use PLINK and the output list of unrelated individuals to filter related individuals from the dataset:
 
 ```
-plink --bfile inputfile --remove related_individuals_file --make-bed --out outputfile
+plink --bfile input_filename --keep unrelated_individuals.txt --make-bed --out output_filename
 ```
 
 Additional QC measures can be applied based on the requirements of your study: 
